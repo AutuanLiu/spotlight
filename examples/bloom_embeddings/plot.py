@@ -1,14 +1,13 @@
 import argparse
 
-import pandas as pd
-
 import matplotlib
-matplotlib.use('Agg')  # NOQA
 import matplotlib.pyplot as plt
-
+import pandas as pd
 import seaborn as sns
 
 from example import Results
+
+matplotlib.use('Agg')    # NOQA
 
 
 def process_results(results, verbose=False):
@@ -16,22 +15,15 @@ def process_results(results, verbose=False):
     baseline = results.best_baseline()
 
     def like_baseline(x):
-        for key in ('n_iter',
-                    'batch_size',
-                    'l2',
-                    'learning_rate',
-                    'loss',
-                    'embedding_dim'):
+        for key in ('n_iter', 'batch_size', 'l2', 'learning_rate', 'loss', 'embedding_dim'):
             if x[key] != baseline[key]:
                 return False
 
         return True
 
-    data = pd.DataFrame([x for x in results
-                         if like_baseline(x)])
+    data = pd.DataFrame([x for x in results if like_baseline(x)])
 
-    best = (data.sort_values('test_mrr', ascending=False)
-            .groupby('compression_ratio', as_index=False).first())
+    best = (data.sort_values('test_mrr', ascending=False).groupby('compression_ratio', as_index=False).first())
 
     # Normalize per iteration
     best['elapsed'] = best['elapsed'] / best['n_iter']
@@ -39,10 +31,8 @@ def process_results(results, verbose=False):
     if verbose:
         print(best)
 
-    baseline_mrr = (best[best['compression_ratio'] == 1.0]
-                    ['validation_mrr'].values[0])
-    baseline_time = (best[best['compression_ratio'] == 1.0]
-                     ['elapsed'].values[0])
+    baseline_mrr = (best[best['compression_ratio'] == 1.0]['validation_mrr'].values[0])
+    baseline_time = (best[best['compression_ratio'] == 1.0]['elapsed'].values[0])
 
     compression_ratio = best['compression_ratio'].values
     mrr = best['validation_mrr'].values / baseline_mrr
@@ -55,17 +45,13 @@ def plot_results(model, movielens, amazon):
 
     sns.set_style("darkgrid")
 
-    for name, result in (('Movielens',
-                          movielens), ('Amazon', amazon)):
+    for name, result in (('Movielens', movielens), ('Amazon', amazon)):
 
         print('Dataset: {}'.format(name))
 
-        (compression_ratio,
-         mrr,
-         elapsed) = process_results(result, verbose=True)
+        (compression_ratio, mrr, elapsed) = process_results(result, verbose=True)
 
-        plt.plot(compression_ratio, mrr,
-                 label=name)
+        plt.plot(compression_ratio, mrr, label=name)
 
     plt.ylabel("MRR ratio to baseline")
     plt.xlabel("Compression ratio")
@@ -75,15 +61,11 @@ def plot_results(model, movielens, amazon):
     plt.savefig('{}_plot.png'.format(model))
     plt.close()
 
-    for name, result in (('Movielens',
-                          movielens), ('Amazon', amazon)):
+    for name, result in (('Movielens', movielens), ('Amazon', amazon)):
 
-        (compression_ratio,
-         mrr,
-         elapsed) = process_results(result)
+        (compression_ratio, mrr, elapsed) = process_results(result)
 
-        plt.plot(compression_ratio, elapsed,
-                 label=name)
+        plt.plot(compression_ratio, elapsed, label=name)
 
     plt.ylabel("Time ratio to baseline")
     plt.xlabel("Compression ratio")
@@ -101,6 +83,5 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    plot_results(args.model,
-                 Results('movielens_{}_results.txt'.format(args.model)),
+    plot_results(args.model, Results('movielens_{}_results.txt'.format(args.model)),
                  Results('amazon_{}_results.txt'.format(args.model)))

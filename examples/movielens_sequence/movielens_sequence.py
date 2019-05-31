@@ -5,18 +5,15 @@ import shutil
 import sys
 
 import numpy as np
-
 from sklearn.model_selection import ParameterSampler
 
-from spotlight.datasets.movielens import get_movielens_dataset
 from spotlight.cross_validation import user_based_train_test_split
+from spotlight.datasets.movielens import get_movielens_dataset
+from spotlight.evaluation import sequence_mrr_score
 from spotlight.sequence.implicit import ImplicitSequenceModel
 from spotlight.sequence.representations import CNNNet
-from spotlight.evaluation import sequence_mrr_score
 
-
-CUDA = (os.environ.get('CUDA') is not None or
-        shutil.which('nvidia-smi') is not None)
+CUDA = (os.environ.get('CUDA') is not None or shutil.which('nvidia-smi') is not None)
 
 NUM_SAMPLES = 100
 
@@ -29,7 +26,6 @@ L2 = [1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 0.0]
 
 
 class Results:
-
     def __init__(self, filename):
 
         self._filename = filename
@@ -42,9 +38,7 @@ class Results:
 
     def save(self, hyperparams, test_mrr, validation_mrr):
 
-        result = {'test_mrr': test_mrr,
-                  'validation_mrr': validation_mrr,
-                  'hash': self._hash(hyperparams)}
+        result = {'test_mrr': test_mrr, 'validation_mrr': validation_mrr, 'hash': self._hash(hyperparams)}
         result.update(hyperparams)
 
         with open(self._filename, 'a+') as out:
@@ -52,8 +46,7 @@ class Results:
 
     def best(self):
 
-        results = sorted([x for x in self],
-                         key=lambda x: -x['test_mrr'])
+        results = sorted([x for x in self], key=lambda x: -x['test_mrr'])
 
         if results:
             return results[0]
@@ -109,13 +102,10 @@ def sample_cnn_hyperparameters(random_state, num):
         'residual': [True, False]
     }
 
-    sampler = ParameterSampler(space,
-                               n_iter=num,
-                               random_state=random_state)
+    sampler = ParameterSampler(space, n_iter=num, random_state=random_state)
 
     for params in sampler:
-        params['dilation'] = list(params['dilation_multiplier'] ** (i % 8)
-                                  for i in range(params['num_layers']))
+        params['dilation'] = list(params['dilation_multiplier']**(i % 8) for i in range(params['num_layers']))
 
         yield params
 
@@ -131,9 +121,7 @@ def sample_lstm_hyperparameters(random_state, num):
         'embedding_dim': EMBEDDING_DIM,
     }
 
-    sampler = ParameterSampler(space,
-                               n_iter=num,
-                               random_state=random_state)
+    sampler = ParameterSampler(space, n_iter=num, random_state=random_state)
 
     for params in sampler:
 
@@ -151,9 +139,7 @@ def sample_pooling_hyperparameters(random_state, num):
         'embedding_dim': EMBEDDING_DIM,
     }
 
-    sampler = ParameterSampler(space,
-                               n_iter=num,
-                               random_state=random_state)
+    sampler = ParameterSampler(space, n_iter=num, random_state=random_state)
 
     for params in sampler:
 
@@ -164,22 +150,24 @@ def evaluate_cnn_model(hyperparameters, train, test, validation, random_state):
 
     h = hyperparameters
 
-    net = CNNNet(train.num_items,
-                 embedding_dim=h['embedding_dim'],
-                 kernel_width=h['kernel_width'],
-                 dilation=h['dilation'],
-                 num_layers=h['num_layers'],
-                 nonlinearity=h['nonlinearity'],
-                 residual_connections=h['residual'])
+    net = CNNNet(
+        train.num_items,
+        embedding_dim=h['embedding_dim'],
+        kernel_width=h['kernel_width'],
+        dilation=h['dilation'],
+        num_layers=h['num_layers'],
+        nonlinearity=h['nonlinearity'],
+        residual_connections=h['residual'])
 
-    model = ImplicitSequenceModel(loss=h['loss'],
-                                  representation=net,
-                                  batch_size=h['batch_size'],
-                                  learning_rate=h['learning_rate'],
-                                  l2=h['l2'],
-                                  n_iter=h['n_iter'],
-                                  use_cuda=CUDA,
-                                  random_state=random_state)
+    model = ImplicitSequenceModel(
+        loss=h['loss'],
+        representation=net,
+        batch_size=h['batch_size'],
+        learning_rate=h['learning_rate'],
+        l2=h['l2'],
+        n_iter=h['n_iter'],
+        use_cuda=CUDA,
+        random_state=random_state)
 
     model.fit(train, verbose=True)
 
@@ -193,14 +181,15 @@ def evaluate_lstm_model(hyperparameters, train, test, validation, random_state):
 
     h = hyperparameters
 
-    model = ImplicitSequenceModel(loss=h['loss'],
-                                  representation='lstm',
-                                  batch_size=h['batch_size'],
-                                  learning_rate=h['learning_rate'],
-                                  l2=h['l2'],
-                                  n_iter=h['n_iter'],
-                                  use_cuda=CUDA,
-                                  random_state=random_state)
+    model = ImplicitSequenceModel(
+        loss=h['loss'],
+        representation='lstm',
+        batch_size=h['batch_size'],
+        learning_rate=h['learning_rate'],
+        l2=h['l2'],
+        n_iter=h['n_iter'],
+        use_cuda=CUDA,
+        random_state=random_state)
 
     model.fit(train, verbose=True)
 
@@ -214,14 +203,15 @@ def evaluate_pooling_model(hyperparameters, train, test, validation, random_stat
 
     h = hyperparameters
 
-    model = ImplicitSequenceModel(loss=h['loss'],
-                                  representation='pooling',
-                                  batch_size=h['batch_size'],
-                                  learning_rate=h['learning_rate'],
-                                  l2=h['l2'],
-                                  n_iter=h['n_iter'],
-                                  use_cuda=CUDA,
-                                  random_state=random_state)
+    model = ImplicitSequenceModel(
+        loss=h['loss'],
+        representation='pooling',
+        batch_size=h['batch_size'],
+        learning_rate=h['learning_rate'],
+        l2=h['l2'],
+        n_iter=h['n_iter'],
+        use_cuda=CUDA,
+        random_state=random_state)
 
     model.fit(train, verbose=True)
 
@@ -238,14 +228,11 @@ def run(train, test, validation, ranomd_state, model_type):
     best_result = results.best()
 
     if model_type == 'pooling':
-        eval_fnc, sample_fnc = (evaluate_pooling_model,
-                                sample_pooling_hyperparameters)
+        eval_fnc, sample_fnc = (evaluate_pooling_model, sample_pooling_hyperparameters)
     elif model_type == 'cnn':
-        eval_fnc, sample_fnc = (evaluate_cnn_model,
-                                sample_cnn_hyperparameters)
+        eval_fnc, sample_fnc = (evaluate_cnn_model, sample_cnn_hyperparameters)
     elif model_type == 'lstm':
-        eval_fnc, sample_fnc = (evaluate_lstm_model,
-                                sample_lstm_hyperparameters)
+        eval_fnc, sample_fnc = (evaluate_lstm_model, sample_lstm_hyperparameters)
     else:
         raise ValueError('Unknown model type')
 
@@ -259,15 +246,9 @@ def run(train, test, validation, ranomd_state, model_type):
 
         print('Evaluating {}'.format(hyperparameters))
 
-        (test_mrr, val_mrr) = eval_fnc(hyperparameters,
-                                       train,
-                                       test,
-                                       validation,
-                                       random_state)
+        (test_mrr, val_mrr) = eval_fnc(hyperparameters, train, test, validation, random_state)
 
-        print('Test MRR {} val MRR {}'.format(
-            test_mrr.mean(), val_mrr.mean()
-        ))
+        print('Test MRR {} val MRR {}'.format(test_mrr.mean(), val_mrr.mean()))
 
         results.save(hyperparameters, test_mrr.mean(), val_mrr.mean())
 
@@ -283,20 +264,14 @@ if __name__ == '__main__':
 
     dataset = get_movielens_dataset('1M')
 
-    train, rest = user_based_train_test_split(dataset,
-                                              random_state=random_state)
-    test, validation = user_based_train_test_split(rest,
-                                                   test_percentage=0.5,
-                                                   random_state=random_state)
-    train = train.to_sequence(max_sequence_length=max_sequence_length,
-                              min_sequence_length=min_sequence_length,
-                              step_size=step_size)
-    test = test.to_sequence(max_sequence_length=max_sequence_length,
-                            min_sequence_length=min_sequence_length,
-                            step_size=step_size)
-    validation = validation.to_sequence(max_sequence_length=max_sequence_length,
-                                        min_sequence_length=min_sequence_length,
-                                        step_size=step_size)
+    train, rest = user_based_train_test_split(dataset, random_state=random_state)
+    test, validation = user_based_train_test_split(rest, test_percentage=0.5, random_state=random_state)
+    train = train.to_sequence(
+        max_sequence_length=max_sequence_length, min_sequence_length=min_sequence_length, step_size=step_size)
+    test = test.to_sequence(
+        max_sequence_length=max_sequence_length, min_sequence_length=min_sequence_length, step_size=step_size)
+    validation = validation.to_sequence(
+        max_sequence_length=max_sequence_length, min_sequence_length=min_sequence_length, step_size=step_size)
 
     mode = sys.argv[1]
 

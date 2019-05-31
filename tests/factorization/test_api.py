@@ -8,20 +8,15 @@ from spotlight.datasets import movielens
 from spotlight.factorization.explicit import ExplicitFactorizationModel
 from spotlight.factorization.implicit import ImplicitFactorizationModel
 
-
 CUDA = bool(os.environ.get('SPOTLIGHT_CUDA', False))
 
 
-@pytest.mark.parametrize('model_class', [
-    ImplicitFactorizationModel,
-    ExplicitFactorizationModel
-])
+@pytest.mark.parametrize('model_class', [ImplicitFactorizationModel, ExplicitFactorizationModel])
 def test_predict_movielens(model_class):
 
     interactions = movielens.get_movielens_dataset('100K')
 
-    model = model_class(n_iter=1,
-                        use_cuda=CUDA)
+    model = model_class(n_iter=1, use_cuda=CUDA)
     model.fit(interactions)
 
     for user_id in np.random.randint(0, interactions.num_users, size=10):

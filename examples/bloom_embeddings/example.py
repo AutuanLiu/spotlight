@@ -6,24 +6,20 @@ import shutil
 import time
 
 import numpy as np
-
 from sklearn.model_selection import ParameterSampler
 
-from spotlight.datasets.movielens import get_movielens_dataset
+from spotlight.cross_validation import (random_train_test_split, user_based_train_test_split)
 from spotlight.datasets.amazon import get_amazon_dataset
-from spotlight.cross_validation import (random_train_test_split,
-                                        user_based_train_test_split)
-from spotlight.sequence.implicit import ImplicitSequenceModel
+from spotlight.datasets.movielens import get_movielens_dataset
+from spotlight.evaluation import mrr_score, sequence_mrr_score
 from spotlight.factorization.implicit import ImplicitFactorizationModel
-from spotlight.sequence.representations import LSTMNet
 from spotlight.factorization.representations import BilinearNet
 from spotlight.layers import BloomEmbedding, ScaledEmbedding
-from spotlight.evaluation import mrr_score, sequence_mrr_score
+from spotlight.sequence.implicit import ImplicitSequenceModel
+from spotlight.sequence.representations import LSTMNet
 from spotlight.torch_utils import set_seed
 
-
-CUDA = (os.environ.get('CUDA') is not None or
-        shutil.which('nvidia-smi') is not None)
+CUDA = (os.environ.get('CUDA') is not None or shutil.which('nvidia-smi') is not None)
 
 NUM_SAMPLES = 50
 
@@ -36,7 +32,6 @@ L2 = [1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 0.0]
 
 
 class Results:
-
     def __init__(self, filename):
 
         self._filename = filename
@@ -51,19 +46,19 @@ class Results:
 
         result = hyperparams.copy()
 
-        result.update({'test_mrr': test_mrr,
-                       'validation_mrr': validation_mrr,
-                       'elapsed': elapsed,
-                       'hash': self._hash(hyperparams)})
+        result.update({
+            'test_mrr': test_mrr,
+            'validation_mrr': validation_mrr,
+            'elapsed': elapsed,
+            'hash': self._hash(hyperparams)
+        })
 
         with open(self._filename, 'a+') as out:
             out.write(json.dumps(result) + '\n')
 
     def best_baseline(self):
 
-        results = sorted([x for x in self
-                          if x['compression_ratio'] == 1.0 and
-                          x['embedding_dim'] >= 32],
+        results = sorted([x for x in self if x['compression_ratio'] == 1.0 and x['embedding_dim'] >= 32],
                          key=lambda x: -x['test_mrr'])
 
         if results:
@@ -73,8 +68,7 @@ class Results:
 
     def best(self):
 
-        results = sorted([x for x in self],
-                         key=lambda x: -x['test_mrr'])
+        results = sorted([x for x in self], key=lambda x: -x['test_mrr'])
 
         if results:
             return results[0]
@@ -125,9 +119,7 @@ def sample_hyperparameters(random_state, num):
         'embedding_dim': EMBEDDING_DIM,
     }
 
-    sampler = ParameterSampler(space,
-                               n_iter=num,
-                               random_state=random_state)
+    sampler = ParameterSampler(space, n_iter=num, random_state=random_state)
 
     for params in sampler:
         yield params
@@ -139,34 +131,35 @@ def build_factorization_model(hyperparameters, train, random_state):
     set_seed(42, CUDA)
 
     if h['compression_ratio'] < 1.0:
-        item_embeddings = BloomEmbedding(train.num_items, h['embedding_dim'],
-                                         compression_ratio=h['compression_ratio'],
-                                         num_hash_functions=4,
-                                         padding_idx=0)
-        user_embeddings = BloomEmbedding(train.num_users, h['embedding_dim'],
-                                         compression_ratio=h['compression_ratio'],
-                                         num_hash_functions=4,
-                                         padding_idx=0)
+        item_embeddings = BloomEmbedding(
+            train.num_items,
+            h['embedding_dim'],
+            compression_ratio=h['compression_ratio'],
+            num_hash_functions=4,
+            padding_idx=0)
+        user_embeddings = BloomEmbedding(
+            train.num_users,
+            h['embedding_dim'],
+            compression_ratio=h['compression_ratio'],
+            num_hash_functions=4,
+            padding_idx=0)
     else:
-        item_embeddings = ScaledEmbedding(train.num_items, h['embedding_dim'],
-                                          padding_idx=0)
-        user_embeddings = ScaledEmbedding(train.num_users, h['embedding_dim'],
-                                          padding_idx=0)
+        item_embeddings = ScaledEmbedding(train.num_items, h['embedding_dim'], padding_idx=0)
+        user_embeddings = ScaledEmbedding(train.num_users, h['embedding_dim'], padding_idx=0)
 
-    network = BilinearNet(train.num_users,
-                          train.num_items,
-                          user_embedding_layer=user_embeddings,
-                          item_embedding_layer=item_embeddings)
+    network = BilinearNet(
+        train.num_users, train.num_items, user_embedding_layer=user_embeddings, item_embedding_layer=item_embeddings)
 
-    model = ImplicitFactorizationModel(loss=h['loss'],
-                                       n_iter=h['n_iter'],
-                                       batch_size=h['batch_size'],
-                                       learning_rate=h['learning_rate'],
-                                       embedding_dim=h['embedding_dim'],
-                                       l2=h['l2'],
-                                       representation=network,
-                                       use_cuda=CUDA,
-                                       random_state=np.random.RandomState(42))
+    model = ImplicitFactorizationModel(
+        loss=h['loss'],
+        n_iter=h['n_iter'],
+        batch_size=h['batch_size'],
+        learning_rate=h['learning_rate'],
+        embedding_dim=h['embedding_dim'],
+        l2=h['l2'],
+        representation=network,
+        use_cuda=CUDA,
+        random_state=np.random.RandomState(42))
 
     return model
 
@@ -178,26 +171,27 @@ def build_sequence_model(hyperparameters, train, random_state):
     set_seed(42, CUDA)
 
     if h['compression_ratio'] < 1.0:
-        item_embeddings = BloomEmbedding(train.num_items, h['embedding_dim'],
-                                         compression_ratio=h['compression_ratio'],
-                                         num_hash_functions=4,
-                                         padding_idx=0)
+        item_embeddings = BloomEmbedding(
+            train.num_items,
+            h['embedding_dim'],
+            compression_ratio=h['compression_ratio'],
+            num_hash_functions=4,
+            padding_idx=0)
     else:
-        item_embeddings = ScaledEmbedding(train.num_items, h['embedding_dim'],
-                                          padding_idx=0)
+        item_embeddings = ScaledEmbedding(train.num_items, h['embedding_dim'], padding_idx=0)
 
-    network = LSTMNet(train.num_items, h['embedding_dim'],
-                      item_embedding_layer=item_embeddings)
+    network = LSTMNet(train.num_items, h['embedding_dim'], item_embedding_layer=item_embeddings)
 
-    model = ImplicitSequenceModel(loss=h['loss'],
-                                  n_iter=h['n_iter'],
-                                  batch_size=h['batch_size'],
-                                  learning_rate=h['learning_rate'],
-                                  embedding_dim=h['embedding_dim'],
-                                  l2=h['l2'],
-                                  representation=network,
-                                  use_cuda=CUDA,
-                                  random_state=np.random.RandomState(42))
+    model = ImplicitSequenceModel(
+        loss=h['loss'],
+        n_iter=h['n_iter'],
+        batch_size=h['batch_size'],
+        learning_rate=h['learning_rate'],
+        embedding_dim=h['embedding_dim'],
+        l2=h['l2'],
+        representation=network,
+        use_cuda=CUDA,
+        random_state=np.random.RandomState(42))
 
     return model
 
@@ -245,23 +239,14 @@ def run(experiment_name, train, test, validation, random_state):
             continue
 
         if 'factorization' in experiment_name:
-            model = build_factorization_model(hyperparameters,
-                                              train,
-                                              random_state)
+            model = build_factorization_model(hyperparameters, train, random_state)
         else:
-            model = build_sequence_model(hyperparameters,
-                                         train,
-                                         random_state)
+            model = build_sequence_model(hyperparameters, train, random_state)
 
         print('Fitting {}'.format(hyperparameters))
-        (test_mrr, val_mrr, elapsed) = evaluate_model(model,
-                                                      train,
-                                                      test,
-                                                      validation)
+        (test_mrr, val_mrr, elapsed) = evaluate_model(model, train, test, validation)
 
-        print('Test MRR {} val MRR {} elapsed {}'.format(
-            test_mrr.mean(), val_mrr.mean(), elapsed
-        ))
+        print('Test MRR {} val MRR {} elapsed {}'.format(test_mrr.mean(), val_mrr.mean(), elapsed))
 
         results.save(hyperparameters, test_mrr.mean(), val_mrr.mean(), elapsed)
 
@@ -279,23 +264,14 @@ def run(experiment_name, train, test, validation, random_state):
             continue
 
         if 'factorization' in experiment_name:
-            model = build_factorization_model(hyperparameters,
-                                              train,
-                                              random_state)
+            model = build_factorization_model(hyperparameters, train, random_state)
         else:
-            model = build_sequence_model(hyperparameters,
-                                         train,
-                                         random_state)
+            model = build_sequence_model(hyperparameters, train, random_state)
 
         print('Evaluating {}'.format(hyperparameters))
 
-        (test_mrr, val_mrr, elapsed) = evaluate_model(model,
-                                                      train,
-                                                      test,
-                                                      validation)
-        print('Test MRR {} val MRR {} elapsed {}'.format(
-            test_mrr.mean(), val_mrr.mean(), elapsed
-        ))
+        (test_mrr, val_mrr, elapsed) = evaluate_model(model, train, test, validation)
+        print('Test MRR {} val MRR {} elapsed {}'.format(test_mrr.mean(), val_mrr.mean(), elapsed))
 
         results.save(hyperparameters, test_mrr.mean(), val_mrr.mean(), elapsed)
 
@@ -317,44 +293,27 @@ if __name__ == '__main__':
         test_percentage = 0.2
     else:
         test_percentage = 0.01
-        dataset = get_amazon_dataset(min_user_interactions=20,
-                                     min_item_interactions=5)
+        dataset = get_amazon_dataset(min_user_interactions=20, min_item_interactions=5)
 
     print(dataset)
 
     if args.model == 'sequence':
-        max_sequence_length = int(np.percentile(dataset.tocsr()
-                                                .getnnz(axis=1),
-                                                95))
+        max_sequence_length = int(np.percentile(dataset.tocsr().getnnz(axis=1), 95))
         min_sequence_length = 20
         step_size = max_sequence_length
 
-        train, rest = user_based_train_test_split(dataset,
-                                                  test_percentage=0.05,
-                                                  random_state=random_state)
-        test, validation = user_based_train_test_split(rest,
-                                                       test_percentage=0.5,
-                                                       random_state=random_state)
-        train = train.to_sequence(max_sequence_length=max_sequence_length,
-                                  min_sequence_length=min_sequence_length,
-                                  step_size=step_size)
-        test = test.to_sequence(max_sequence_length=max_sequence_length,
-                                min_sequence_length=min_sequence_length,
-                                step_size=step_size)
-        validation = validation.to_sequence(max_sequence_length=max_sequence_length,
-                                            min_sequence_length=min_sequence_length,
-                                            step_size=step_size)
-        print('In test {}, in validation {}'.format(
-            len(test.sequences),
-            len(validation.sequences))
-        )
+        train, rest = user_based_train_test_split(dataset, test_percentage=0.05, random_state=random_state)
+        test, validation = user_based_train_test_split(rest, test_percentage=0.5, random_state=random_state)
+        train = train.to_sequence(
+            max_sequence_length=max_sequence_length, min_sequence_length=min_sequence_length, step_size=step_size)
+        test = test.to_sequence(
+            max_sequence_length=max_sequence_length, min_sequence_length=min_sequence_length, step_size=step_size)
+        validation = validation.to_sequence(
+            max_sequence_length=max_sequence_length, min_sequence_length=min_sequence_length, step_size=step_size)
+        print('In test {}, in validation {}'.format(len(test.sequences), len(validation.sequences)))
     elif args.model == 'factorization':
-        train, rest = random_train_test_split(dataset,
-                                              test_percentage=test_percentage,
-                                              random_state=random_state)
-        test, validation = random_train_test_split(rest,
-                                                   test_percentage=0.5,
-                                                   random_state=random_state)
+        train, rest = random_train_test_split(dataset, test_percentage=test_percentage, random_state=random_state)
+        test, validation = random_train_test_split(rest, test_percentage=0.5, random_state=random_state)
 
     experiment_name = '{}_{}'.format(args.dataset, args.model)
 

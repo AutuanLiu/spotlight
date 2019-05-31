@@ -11,8 +11,7 @@ def _load_data(filename, columns=None):
     mrr_cols = ['validation_mrr', 'test_mrr']
 
     if columns is None:
-        columns = [x for x in data.columns if
-                   (x not in mrr_cols and x != 'hash')]
+        columns = [x for x in data.columns if (x not in mrr_cols and x != 'hash')]
 
     cols = data.columns
     cols = mrr_cols + columns
@@ -22,21 +21,14 @@ def _load_data(filename, columns=None):
 
 def _print_df(df):
 
-    print(tabulate(df, headers=df.columns,
-                   showindex=False,
-                   tablefmt='pipe'))
+    print(tabulate(df, headers=df.columns, showindex=False, tablefmt='pipe'))
 
 
 def print_data():
 
-    cnn_data = _load_data('results/cnn_results.txt',
-                          ['residual',
-                           'nonlinearity',
-                           'loss',
-                           'num_layers',
-                           'kernel_width',
-                           'dilation',
-                           'embedding_dim'])
+    cnn_data = _load_data(
+        'results/cnn_results.txt',
+        ['residual', 'nonlinearity', 'loss', 'num_layers', 'kernel_width', 'dilation', 'embedding_dim'])
     _print_df(cnn_data[:5])
 
     lstm_data = _load_data('results/lstm_results.txt')

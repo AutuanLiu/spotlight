@@ -3,18 +3,13 @@ Factorization models for explicit feedback problems.
 """
 
 import numpy as np
-
 import torch
-
 import torch.optim as optim
 
-from spotlight.helpers import _repr_model
 from spotlight.factorization._components import _predict_process_ids
 from spotlight.factorization.representations import BilinearNet
-from spotlight.losses import (poisson_loss,
-                              regression_loss,
-                              logistic_loss)
-
+from spotlight.helpers import _repr_model
+from spotlight.losses import logistic_loss, poisson_loss, regression_loss
 from spotlight.torch_utils import cpu, gpu, minibatch, set_seed, shuffle
 
 
@@ -78,9 +73,7 @@ class ExplicitFactorizationModel(object):
                  sparse=False,
                  random_state=None):
 
-        assert loss in ('regression',
-                        'poisson',
-                        'logistic')
+        assert loss in ('regression', 'poisson', 'logistic')
 
         self._loss = loss
         self._embedding_dim = embedding_dim
@@ -100,8 +93,7 @@ class ExplicitFactorizationModel(object):
         self._optimizer = None
         self._loss_func = None
 
-        set_seed(self._random_state.randint(-10**8, 10**8),
-                 cuda=self._use_cuda)
+        set_seed(self._random_state.randint(-10**8, 10**8), cuda=self._use_cuda)
 
     def __repr__(self):
 
@@ -112,29 +104,16 @@ class ExplicitFactorizationModel(object):
         return self._net is not None
 
     def _initialize(self, interactions):
-
-        (self._num_users,
-         self._num_items) = (interactions.num_users,
-                             interactions.num_items)
+        (self._num_users, self._num_items) = (interactions.num_users, interactions.num_items)
 
         if self._representation is not None:
-            self._net = gpu(self._representation,
-                            self._use_cuda)
+            self._net = gpu(self._representation, self._use_cuda)
         else:
             self._net = gpu(
-                BilinearNet(self._num_users,
-                            self._num_items,
-                            self._embedding_dim,
-                            sparse=self._sparse),
-                self._use_cuda
-            )
+                BilinearNet(self._num_users, self._num_items, self._embedding_dim, sparse=self._sparse), self._use_cuda)
 
         if self._optimizer_func is None:
-            self._optimizer = optim.Adam(
-                self._net.parameters(),
-                weight_decay=self._l2,
-                lr=self._learning_rate
-            )
+            self._optimizer = optim.Adam(self._net.parameters(), weight_decay=self._l2, lr=self._learning_rate)
         else:
             self._optimizer = self._optimizer_func(self._net.parameters())
 
@@ -148,15 +127,13 @@ class ExplicitFactorizationModel(object):
             raise ValueError('Unknown loss: {}'.format(self._loss))
 
     def _check_input(self, user_ids, item_ids, allow_items_none=False):
-
         if isinstance(user_ids, int):
             user_id_max = user_ids
         else:
             user_id_max = user_ids.max()
 
         if user_id_max >= self._num_users:
-            raise ValueError('Maximum user id greater '
-                             'than number of users in model.')
+            raise ValueError('Maximum user id greater ' 'than number of users in model.')
 
         if allow_items_none and item_ids is None:
             return
@@ -167,8 +144,7 @@ class ExplicitFactorizationModel(object):
             item_id_max = item_ids.max()
 
         if item_id_max >= self._num_items:
-            raise ValueError('Maximum item id greater '
-                             'than number of items in model.')
+            raise ValueError('Maximum item id greater ' 'than number of items in model.')
 
     def fit(self, interactions, verbose=False):
         """
@@ -198,27 +174,16 @@ class ExplicitFactorizationModel(object):
 
         for epoch_num in range(self._n_iter):
 
-            users, items, ratings = shuffle(user_ids,
-                                            item_ids,
-                                            interactions.ratings,
-                                            random_state=self._random_state)
+            users, items, ratings = shuffle(user_ids, item_ids, interactions.ratings, random_state=self._random_state)
 
-            user_ids_tensor = gpu(torch.from_numpy(users),
-                                  self._use_cuda)
-            item_ids_tensor = gpu(torch.from_numpy(items),
-                                  self._use_cuda)
-            ratings_tensor = gpu(torch.from_numpy(ratings),
-                                 self._use_cuda)
+            user_ids_tensor = gpu(torch.from_numpy(users), self._use_cuda)
+            item_ids_tensor = gpu(torch.from_numpy(items), self._use_cuda)
+            ratings_tensor = gpu(torch.from_numpy(ratings), self._use_cuda)
 
             epoch_loss = 0.0
 
-            for (minibatch_num,
-                 (batch_user,
-                  batch_item,
-                  batch_ratings)) in enumerate(minibatch(user_ids_tensor,
-                                                         item_ids_tensor,
-                                                         ratings_tensor,
-                                                         batch_size=self._batch_size)):
+            for (minibatch_num, (batch_user, batch_item, batch_ratings)) in enumerate(
+                    minibatch(user_ids_tensor, item_ids_tensor, ratings_tensor, batch_size=self._batch_size)):
 
                 predictions = self._net(batch_user, batch_item)
 
@@ -239,8 +204,7 @@ class ExplicitFactorizationModel(object):
                 print('Epoch {}: loss {}'.format(epoch_num, epoch_loss))
 
             if np.isnan(epoch_loss) or epoch_loss == 0.0:
-                raise ValueError('Degenerate epoch loss: {}'
-                                 .format(epoch_loss))
+                raise ValueError('Degenerate epoch loss: {}'.format(epoch_loss))
 
     def predict(self, user_ids, item_ids=None):
         """
@@ -270,9 +234,7 @@ class ExplicitFactorizationModel(object):
         self._check_input(user_ids, item_ids, allow_items_none=True)
         self._net.train(False)
 
-        user_ids, item_ids = _predict_process_ids(user_ids, item_ids,
-                                                  self._num_items,
-                                                  self._use_cuda)
+        user_ids, item_ids = _predict_process_ids(user_ids, item_ids, self._num_items, self._use_cuda)
 
         out = self._net(user_ids, item_ids)
 

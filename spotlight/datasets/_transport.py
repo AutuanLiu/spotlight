@@ -2,9 +2,7 @@ import os
 
 import requests
 
-
-DATA_DIR = os.path.join(os.path.expanduser('~'),
-                        'spotlight_data')
+DATA_DIR = os.path.join(os.path.expanduser('~'), 'spotlight_data')
 
 
 def create_data_dir(path):

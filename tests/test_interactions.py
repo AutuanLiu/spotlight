@@ -66,30 +66,18 @@ def _test_temporal_order(sequence_users, sequences, interactions):
 
 def test_known_output_step_1():
 
-    interactions = Interactions(np.zeros(5),
-                                np.arange(5) + 1,
-                                timestamps=np.arange(5))
-    sequences = interactions.to_sequence(max_sequence_length=5,
-                                         step_size=1).sequences
+    interactions = Interactions(np.zeros(5), np.arange(5) + 1, timestamps=np.arange(5))
+    sequences = interactions.to_sequence(max_sequence_length=5, step_size=1).sequences
 
-    expected = np.array([
-        [1, 2, 3, 4, 5],
-        [0, 1, 2, 3, 4],
-        [0, 0, 1, 2, 3],
-        [0, 0, 0, 1, 2],
-        [0, 0, 0, 0, 1]
-    ])
+    expected = np.array([[1, 2, 3, 4, 5], [0, 1, 2, 3, 4], [0, 0, 1, 2, 3], [0, 0, 0, 1, 2], [0, 0, 0, 0, 1]])
 
     assert np.all(sequences == expected)
 
 
 def test_known_output_step_2():
 
-    interactions = Interactions(np.zeros(5),
-                                np.arange(5) + 1,
-                                timestamps=np.arange(5))
-    sequences = interactions.to_sequence(max_sequence_length=5,
-                                         step_size=2).sequences
+    interactions = Interactions(np.zeros(5), np.arange(5) + 1, timestamps=np.arange(5))
+    sequences = interactions.to_sequence(max_sequence_length=5, step_size=2).sequences
 
     expected = np.array([
         [1, 2, 3, 4, 5],
@@ -100,37 +88,23 @@ def test_known_output_step_2():
     assert np.all(sequences == expected)
 
 
-@pytest.mark.parametrize('max_sequence_length, step_size', [
-    (5, 1),
-    (5, 3),
-    (20, 1),
-    (20, 4),
-    (1024, 1024),
-    (1024, 5)
-])
+@pytest.mark.parametrize('max_sequence_length, step_size', [(5, 1), (5, 3), (20, 1), (20, 4), (1024, 1024), (1024, 5)])
 def test_to_sequence(max_sequence_length, step_size):
 
     interactions = movielens.get_movielens_dataset('100K')
     _, interactions = random_train_test_split(interactions)
 
-    sequences = interactions.to_sequence(
-        max_sequence_length=max_sequence_length,
-        step_size=step_size)
+    sequences = interactions.to_sequence(max_sequence_length=max_sequence_length, step_size=step_size)
 
     if step_size == 1:
-        assert sequences.sequences.shape == (len(interactions),
-                                             max_sequence_length)
+        assert sequences.sequences.shape == (len(interactions), max_sequence_length)
     else:
         assert sequences.sequences.shape[1] == max_sequence_length
 
     _test_just_padding(sequences.sequences)
     _test_final_column_no_padding(sequences.sequences)
-    _test_shifted(sequences.user_ids,
-                  sequences.sequences,
-                  step_size)
-    _test_temporal_order(sequences.user_ids,
-                         sequences.sequences,
-                         interactions)
+    _test_shifted(sequences.user_ids, sequences.sequences, step_size)
+    _test_temporal_order(sequences.user_ids, sequences.sequences, interactions)
 
 
 def test_to_sequence_min_length():
@@ -144,6 +118,5 @@ def test_to_sequence_min_length():
     assert np.any((sequences.sequences != 0).sum(axis=1) < min_sequence_length)
 
     # But no such sequences after we specify min length.
-    sequences = interactions.to_sequence(max_sequence_length=20,
-                                         min_sequence_length=min_sequence_length)
+    sequences = interactions.to_sequence(max_sequence_length=20, min_sequence_length=min_sequence_length)
     assert not np.any((sequences.sequences != 0).sum(axis=1) < min_sequence_length)

@@ -11,7 +11,6 @@ import torch.nn.functional as F
 
 from spotlight.layers import ScaledEmbedding, ZeroEmbedding
 
-
 PADDING_IDX = 0
 
 
@@ -21,7 +20,7 @@ def _to_iterable(val, num):
         iter(val)
         return val
     except TypeError:
-        return (val,) * num
+        return (val, ) * num
 
 
 class PoolNet(nn.Module):
@@ -56,8 +55,7 @@ class PoolNet(nn.Module):
 
     """
 
-    def __init__(self, num_items, embedding_dim=32,
-                 item_embedding_layer=None, sparse=False):
+    def __init__(self, num_items, embedding_dim=32, item_embedding_layer=None, sparse=False):
 
         super(PoolNet, self).__init__()
 
@@ -66,12 +64,9 @@ class PoolNet(nn.Module):
         if item_embedding_layer is not None:
             self.item_embeddings = item_embedding_layer
         else:
-            self.item_embeddings = ScaledEmbedding(num_items, embedding_dim,
-                                                   padding_idx=PADDING_IDX,
-                                                   sparse=sparse)
+            self.item_embeddings = ScaledEmbedding(num_items, embedding_dim, padding_idx=PADDING_IDX, sparse=sparse)
 
-        self.item_biases = ZeroEmbedding(num_items, 1, sparse=sparse,
-                                         padding_idx=PADDING_IDX)
+        self.item_biases = ZeroEmbedding(num_items, 1, sparse=sparse, padding_idx=PADDING_IDX)
 
     def user_representation(self, item_sequences):
         """
@@ -89,27 +84,19 @@ class PoolNet(nn.Module):
         """
 
         # Make the embedding dimension the channel dimension
-        sequence_embeddings = (self.item_embeddings(item_sequences)
-                               .permute(0, 2, 1))
+        sequence_embeddings = (self.item_embeddings(item_sequences).permute(0, 2, 1))
 
         # Add a trailing dimension of 1
-        sequence_embeddings = (sequence_embeddings
-                               .unsqueeze(3))
+        sequence_embeddings = (sequence_embeddings.unsqueeze(3))
 
         # Pad it with zeros from left
-        sequence_embeddings = F.pad(sequence_embeddings,
-                                    (0, 0, 1, 0))
+        sequence_embeddings = F.pad(sequence_embeddings, (0, 0, 1, 0))
 
         # Average representations, ignoring padding.
         sequence_embedding_sum = torch.cumsum(sequence_embeddings, 2)
-        non_padding_entries = (
-            torch.cumsum((sequence_embeddings != 0.0).float(), 2)
-            .expand_as(sequence_embedding_sum)
-        )
+        non_padding_entries = (torch.cumsum((sequence_embeddings != 0.0).float(), 2).expand_as(sequence_embedding_sum))
 
-        user_representations = (
-            sequence_embedding_sum / (non_padding_entries + 1)
-        ).squeeze(3)
+        user_representations = (sequence_embedding_sum / (non_padding_entries + 1)).squeeze(3)
 
         return user_representations[:, :, :-1], user_representations[:, :, -1]
 
@@ -133,13 +120,10 @@ class PoolNet(nn.Module):
             of shape (minibatch_size, sequence_length)
         """
 
-        target_embedding = (self.item_embeddings(targets)
-                            .permute(0, 2, 1)
-                            .squeeze())
+        target_embedding = (self.item_embeddings(targets).permute(0, 2, 1).squeeze())
         target_bias = self.item_biases(targets).squeeze()
 
-        dot = ((user_representations * target_embedding)
-               .sum(1))
+        dot = ((user_representations * target_embedding).sum(1))
 
         return target_bias + dot
 
@@ -173,8 +157,7 @@ class LSTMNet(nn.Module):
        recurrent neural networks." arXiv preprint arXiv:1511.06939 (2015).
     """
 
-    def __init__(self, num_items, embedding_dim=32,
-                 item_embedding_layer=None, sparse=False):
+    def __init__(self, num_items, embedding_dim=32, item_embedding_layer=None, sparse=False):
 
         super(LSTMNet, self).__init__()
 
@@ -183,16 +166,11 @@ class LSTMNet(nn.Module):
         if item_embedding_layer is not None:
             self.item_embeddings = item_embedding_layer
         else:
-            self.item_embeddings = ScaledEmbedding(num_items, embedding_dim,
-                                                   padding_idx=PADDING_IDX,
-                                                   sparse=sparse)
+            self.item_embeddings = ScaledEmbedding(num_items, embedding_dim, padding_idx=PADDING_IDX, sparse=sparse)
 
-        self.item_biases = ZeroEmbedding(num_items, 1, sparse=sparse,
-                                         padding_idx=PADDING_IDX)
+        self.item_biases = ZeroEmbedding(num_items, 1, sparse=sparse, padding_idx=PADDING_IDX)
 
-        self.lstm = nn.LSTM(batch_first=True,
-                            input_size=embedding_dim,
-                            hidden_size=embedding_dim)
+        self.lstm = nn.LSTM(batch_first=True, input_size=embedding_dim, hidden_size=embedding_dim)
 
     def user_representation(self, item_sequences):
         """
@@ -210,15 +188,11 @@ class LSTMNet(nn.Module):
         """
 
         # Make the embedding dimension the channel dimension
-        sequence_embeddings = (self.item_embeddings(item_sequences)
-                               .permute(0, 2, 1))
+        sequence_embeddings = (self.item_embeddings(item_sequences).permute(0, 2, 1))
         # Add a trailing dimension of 1
-        sequence_embeddings = (sequence_embeddings
-                               .unsqueeze(3))
+        sequence_embeddings = (sequence_embeddings.unsqueeze(3))
         # Pad it with zeros from left
-        sequence_embeddings = (F.pad(sequence_embeddings,
-                                     (0, 0, 1, 0))
-                               .squeeze(3))
+        sequence_embeddings = (F.pad(sequence_embeddings, (0, 0, 1, 0)).squeeze(3))
         sequence_embeddings = sequence_embeddings.permute(0, 2, 1)
 
         user_representations, _ = self.lstm(sequence_embeddings)
@@ -246,14 +220,10 @@ class LSTMNet(nn.Module):
             of shape (minibatch_size, sequence_length)
         """
 
-        target_embedding = (self.item_embeddings(targets)
-                            .permute(0, 2, 1)
-                            .squeeze())
+        target_embedding = (self.item_embeddings(targets).permute(0, 2, 1).squeeze())
         target_bias = self.item_biases(targets).squeeze()
 
-        dot = ((user_representations * target_embedding)
-               .sum(1)
-               .squeeze())
+        dot = ((user_representations * target_embedding).sum(1).squeeze())
 
         return target_bias + dot
 
@@ -318,7 +288,8 @@ class CNNNet(nn.Module):
        arXiv preprint arXiv:1610.10099 (2016).
     """
 
-    def __init__(self, num_items,
+    def __init__(self,
+                 num_items,
                  embedding_dim=32,
                  kernel_width=3,
                  dilation=1,
@@ -347,25 +318,17 @@ class CNNNet(nn.Module):
         if item_embedding_layer is not None:
             self.item_embeddings = item_embedding_layer
         else:
-            self.item_embeddings = ScaledEmbedding(num_items, embedding_dim,
-                                                   padding_idx=PADDING_IDX,
-                                                   sparse=sparse)
+            self.item_embeddings = ScaledEmbedding(num_items, embedding_dim, padding_idx=PADDING_IDX, sparse=sparse)
 
-        self.item_biases = ZeroEmbedding(num_items, 1, sparse=sparse,
-                                         padding_idx=PADDING_IDX)
+        self.item_biases = ZeroEmbedding(num_items, 1, sparse=sparse, padding_idx=PADDING_IDX)
 
         self.cnn_layers = [
-            nn.Conv2d(embedding_dim,
-                      embedding_dim,
-                      (_kernel_width, 1),
-                      dilation=(_dilation, 1)) for
-            (_kernel_width, _dilation) in zip(self.kernel_width,
-                                              self.dilation)
+            nn.Conv2d(embedding_dim, embedding_dim, (_kernel_width, 1), dilation=(_dilation, 1))
+            for (_kernel_width, _dilation) in zip(self.kernel_width, self.dilation)
         ]
 
         for i, layer in enumerate(self.cnn_layers):
-            self.add_module('cnn_{}'.format(i),
-                            layer)
+            self.add_module('cnn_{}'.format(i), layer)
 
     def user_representation(self, item_sequences):
         """
@@ -383,33 +346,23 @@ class CNNNet(nn.Module):
         """
 
         # Make the embedding dimension the channel dimension
-        sequence_embeddings = (self.item_embeddings(item_sequences)
-                               .permute(0, 2, 1))
+        sequence_embeddings = (self.item_embeddings(item_sequences).permute(0, 2, 1))
         # Add a trailing dimension of 1
-        sequence_embeddings = (sequence_embeddings
-                               .unsqueeze(3))
+        sequence_embeddings = (sequence_embeddings.unsqueeze(3))
 
         # Pad so that the CNN doesn't have the future
         # of the sequence in its receptive field.
-        receptive_field_width = (self.kernel_width[0] +
-                                 (self.kernel_width[0] - 1) *
-                                 (self.dilation[0] - 1))
+        receptive_field_width = (self.kernel_width[0] + (self.kernel_width[0] - 1) * (self.dilation[0] - 1))
 
-        x = F.pad(sequence_embeddings,
-                  (0, 0, receptive_field_width, 0))
+        x = F.pad(sequence_embeddings, (0, 0, receptive_field_width, 0))
         x = self.nonlinearity(self.cnn_layers[0](x))
 
         if self.residual_connections:
-            residual = F.pad(sequence_embeddings,
-                             (0, 0, 1, 0))
+            residual = F.pad(sequence_embeddings, (0, 0, 1, 0))
             x = x + residual
 
-        for (cnn_layer, kernel_width, dilation) in zip(self.cnn_layers[1:],
-                                                       self.kernel_width[1:],
-                                                       self.dilation[1:]):
-            receptive_field_width = (kernel_width +
-                                     (kernel_width - 1) *
-                                     (dilation - 1))
+        for (cnn_layer, kernel_width, dilation) in zip(self.cnn_layers[1:], self.kernel_width[1:], self.dilation[1:]):
+            receptive_field_width = (kernel_width + (kernel_width - 1) * (dilation - 1))
             residual = x
             x = F.pad(x, (0, 0, receptive_field_width - 1, 0))
             x = self.nonlinearity(cnn_layer(x))
@@ -441,14 +394,10 @@ class CNNNet(nn.Module):
             Of shape (minibatch_size, sequence_length).
         """
 
-        target_embedding = (self.item_embeddings(targets)
-                            .permute(0, 2, 1)
-                            .squeeze())
+        target_embedding = (self.item_embeddings(targets).permute(0, 2, 1).squeeze())
         target_bias = self.item_biases(targets).squeeze()
 
-        dot = ((user_representations * target_embedding)
-               .sum(1)
-               .squeeze())
+        dot = ((user_representations * target_embedding).sum(1).squeeze())
 
         return target_bias + dot
 
@@ -486,11 +435,7 @@ class MixtureLSTMNet(nn.Module):
        Users with Diverse Interests" https://github.com/maciejkula/mixture (2017)
     """
 
-    def __init__(self, num_items,
-                 embedding_dim=32,
-                 num_mixtures=4,
-                 item_embedding_layer=None,
-                 sparse=False):
+    def __init__(self, num_items, embedding_dim=32, num_mixtures=4, item_embedding_layer=None, sparse=False):
 
         super(MixtureLSTMNet, self).__init__()
 
@@ -500,19 +445,12 @@ class MixtureLSTMNet(nn.Module):
         if item_embedding_layer is not None:
             self.item_embeddings = item_embedding_layer
         else:
-            self.item_embeddings = ScaledEmbedding(num_items, embedding_dim,
-                                                   padding_idx=PADDING_IDX,
-                                                   sparse=sparse)
+            self.item_embeddings = ScaledEmbedding(num_items, embedding_dim, padding_idx=PADDING_IDX, sparse=sparse)
 
-        self.item_biases = ZeroEmbedding(num_items, 1, sparse=sparse,
-                                         padding_idx=PADDING_IDX)
+        self.item_biases = ZeroEmbedding(num_items, 1, sparse=sparse, padding_idx=PADDING_IDX)
 
-        self.lstm = nn.LSTM(batch_first=True,
-                            input_size=embedding_dim,
-                            hidden_size=embedding_dim)
-        self.projection = nn.Conv1d(embedding_dim,
-                                    embedding_dim * self.num_mixtures * 2,
-                                    kernel_size=1)
+        self.lstm = nn.LSTM(batch_first=True, input_size=embedding_dim, hidden_size=embedding_dim)
+        self.projection = nn.Conv1d(embedding_dim, embedding_dim * self.num_mixtures * 2, kernel_size=1)
 
     def user_representation(self, item_sequences):
         """
@@ -532,24 +470,18 @@ class MixtureLSTMNet(nn.Module):
         batch_size, sequence_length = item_sequences.size()
 
         # Make the embedding dimension the channel dimension
-        sequence_embeddings = (self.item_embeddings(item_sequences)
-                               .permute(0, 2, 1))
+        sequence_embeddings = (self.item_embeddings(item_sequences).permute(0, 2, 1))
         # Add a trailing dimension of 1
-        sequence_embeddings = (sequence_embeddings
-                               .unsqueeze(3))
+        sequence_embeddings = (sequence_embeddings.unsqueeze(3))
         # Pad it with zeros from left
-        sequence_embeddings = (F.pad(sequence_embeddings,
-                                     (0, 0, 1, 0))
-                               .squeeze(3))
+        sequence_embeddings = (F.pad(sequence_embeddings, (0, 0, 1, 0)).squeeze(3))
         sequence_embeddings = sequence_embeddings
         sequence_embeddings = sequence_embeddings.permute(0, 2, 1)
 
         user_representations, _ = self.lstm(sequence_embeddings)
         user_representations = user_representations.permute(0, 2, 1)
         user_representations = self.projection(user_representations)
-        user_representations = user_representations.view(batch_size,
-                                                         self.num_mixtures * 2,
-                                                         self.embedding_dim,
+        user_representations = user_representations.view(batch_size, self.num_mixtures * 2, self.embedding_dim,
                                                          sequence_length + 1)
 
         return user_representations[:, :, :, :-1], user_representations[:, :, :, -1:]
@@ -577,20 +509,13 @@ class MixtureLSTMNet(nn.Module):
         user_components = user_representations[:, :self.num_mixtures, :, :]
         mixture_vectors = user_representations[:, self.num_mixtures:, :, :]
 
-        target_embedding = (self.item_embeddings(targets)
-                            .permute(0, 2, 1))
+        target_embedding = (self.item_embeddings(targets).permute(0, 2, 1))
         target_bias = self.item_biases(targets).squeeze()
 
-        mixture_weights = (mixture_vectors * target_embedding
-                           .unsqueeze(1)
-                           .expand_as(user_components))
-        mixture_weights = (F.softmax(mixture_weights.sum(2), 1)
-                           .unsqueeze(2)
-                           .expand_as(user_components))
+        mixture_weights = (mixture_vectors * target_embedding.unsqueeze(1).expand_as(user_components))
+        mixture_weights = (F.softmax(mixture_weights.sum(2), 1).unsqueeze(2).expand_as(user_components))
         weighted_user_representations = (mixture_weights * user_components).sum(1)
 
-        dot = ((weighted_user_representations * target_embedding)
-               .sum(1)
-               .squeeze())
+        dot = ((weighted_user_representations * target_embedding).sum(1).squeeze())
 
         return target_bias + dot

@@ -18,14 +18,10 @@ from spotlight.interactions import Interactions
 def _get_dataset():
 
     path = _transport.get_data('https://github.com/zygmuntz/goodbooks-10k/'
-                               'releases/download/v1.0/goodbooks-10k.hdf5',
-                               'goodbooks',
-                               'goodbooks.hdf5')
+                               'releases/download/v1.0/goodbooks-10k.hdf5', 'goodbooks', 'goodbooks.hdf5')
 
     with h5py.File(path, 'r') as data:
-        return (data['ratings'][:, 0],
-                data['ratings'][:, 1],
-                data['ratings'][:, 2].astype(np.float32),
+        return (data['ratings'][:, 0], data['ratings'][:, 1], data['ratings'][:, 2].astype(np.float32),
                 np.arange(len(data['ratings']), dtype=np.int32))
 
 

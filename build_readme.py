@@ -6,9 +6,8 @@ def _read_readme():
 
 def _substitute(readme):
 
-    readme = (readme.replace('_static', 'docs/_static')
-              .replace('.. testcode::', '.. code-block:: python')
-              .replace('.. testoutput::\n   :hide:', ''))
+    readme = (readme.replace('_static', 'docs/_static').replace('.. testcode::', '.. code-block:: python').replace(
+        '.. testoutput::\n   :hide:', ''))
 
     return readme
 
